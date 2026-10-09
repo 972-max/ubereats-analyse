@@ -1,0 +1,510 @@
+<style>
+  .ue { display: grid; gap: var(--cds-gap-lg); font-family: var(--font-anthropic-sans); font-variant-numeric: tabular-nums; }
+  .ue-head { display: grid; gap: var(--cds-gap-xs); }
+  .ue-title { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); margin: 0; text-wrap: balance; }
+  .ue-takeaway { color: var(--color-fg-muted); font-size: var(--cds-font-size-body); margin: 0; max-width: 70ch; }
+  .ue-takeaway b { color: var(--color-fg); font-weight: 600; }
+  .ue-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 9.5rem), 1fr)); gap: var(--cds-gap-md); }
+  .ue-tile { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md); display: grid; gap: var(--cds-gap-xs); align-content: start; }
+  .ue-tile-label { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .ue-tile-value { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: var(--cds-font-size-title); line-height: 1.1; min-height: 1.1em; }
+  .ue-tile-note { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .ue-section { display: grid; gap: var(--cds-gap-md); }
+  .ue-h2 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0; }
+  .ue-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: var(--cds-gap-md); }
+  .ue-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: grid; gap: var(--cds-gap-sm); align-content: start; min-width: 0; }
+  .ue-card h3 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0; }
+  .ue-note { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin: 0; }
+  .ue-chart { position: relative; min-height: 240px; }
+  .ue-chart svg { display: block; overflow: visible; }
+  .ue-chart text { font-size: 11px; fill: var(--color-fg-muted); }
+  .ue-chart .ue-val { fill: var(--color-fg); font-weight: 600; }
+  .ue-legend { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+  .ue-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .ue-legend i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .ue-tip { position: absolute; pointer-events: none; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); white-space: nowrap; z-index: 2; }
+  .ue-tip .k { color: var(--cds-text-secondary); }
+  .ue-fail { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 240px; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+  .ue-fail::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--color-bad); }
+  .ue-tools { display: flex; flex-wrap: wrap; gap: var(--cds-gap-sm); align-items: center; }
+  .ue-tools input { font: inherit; padding: 6px 10px; border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); background: var(--color-bg); color: var(--color-fg); min-width: 0; flex: 1 1 12rem; max-width: 20rem; }
+  .ue-tablebox { max-height: 26rem; overflow: auto; }
+  .ue-table { width: 100%; border-collapse: collapse; font-size: var(--cds-font-size-caption); }
+  .ue-table th { position: sticky; top: 0; background: var(--color-panel); text-align: left; border-bottom: 1px solid var(--color-border-line); padding: 0; }
+  .ue-table th button { all: unset; cursor: pointer; display: block; padding: 6px 8px; color: var(--color-fg-muted); font-weight: 600; }
+  .ue-table th button:focus-visible { outline: 2px solid var(--color-fg); }
+  .ue-table td { padding: 6px 8px; border-bottom: 1px solid var(--color-border-line); white-space: nowrap; }
+  .ue-table td.num, .ue-table th.num { text-align: right; }
+  .ue-pill { display: inline-block; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--color-border-line); color: var(--color-fg-muted); }
+  .ue-limits { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin: 0; padding-left: 1.2em; display: grid; gap: 4px; max-width: 75ch; }
+  [data-dash-source-state=empty] { color: transparent; }
+  [data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+</style>
+
+<div class="ue">
+  <header class="ue-head" id="haut">
+    <h1 class="ue-title">Livraisons Uber Eats</h1>
+    <p class="ue-takeaway" id="takeaway">
+      Du 22 septembre au 8 octobre 2026, j'ai gagné <b data-source="kpis" data-field="revenu_total" data-row="0" class="dash-skeleton">—</b>
+      en <b data-source="kpis" data-field="nb_livraisons" data-row="0" class="dash-skeleton">—</b> livraisons.
+      La dernière semaine rapporte <b data-source="semaines" data-field="total" data-where="semaine=Sem. du 05/10" class="dash-skeleton">—</b>,
+      grâce au volume (<b data-source="semaines" data-field="nb" data-where="semaine=Sem. du 05/10" class="dash-skeleton">—</b> livraisons),
+      alors que le prix moyen d'une course baisse d'une semaine à l'autre.
+    </p>
+  </header>
+
+  <section class="ue-tiles" aria-label="Chiffres clés">
+    <div class="ue-tile"><span class="ue-tile-label">Revenu total</span><span class="ue-tile-value dash-skeleton" data-source="kpis" data-field="revenu_total" data-row="0">—</span><span class="ue-tile-note">courses + pourboires + bonus</span></div>
+    <div class="ue-tile"><span class="ue-tile-label">Livraisons</span><span class="ue-tile-value dash-skeleton" data-source="kpis" data-field="nb_livraisons" data-row="0">—</span><span class="ue-tile-note">sur <span data-source="kpis" data-field="nb_journees" data-row="0">—</span> journées</span></div>
+    <div class="ue-tile"><span class="ue-tile-label">Revenu par heure active</span><span class="ue-tile-value dash-skeleton" data-source="kpis" data-field="revenu_heure" data-row="0">—</span><span class="ue-tile-note">hors attente entre deux courses</span></div>
+    <div class="ue-tile"><span class="ue-tile-label">Prix médian d'une course</span><span class="ue-tile-value dash-skeleton" data-source="kpis" data-field="prix_median" data-row="0">—</span><span class="ue-tile-note">la moitié des courses paient moins</span></div>
+    <div class="ue-tile"><span class="ue-tile-label">Durée médiane</span><span class="ue-tile-value dash-skeleton" data-source="kpis" data-field="duree_mediane" data-row="0">—</span><span class="ue-tile-note">de l'acceptation à la livraison</span></div>
+  </section>
+
+  <section class="ue-section" id="evolution">
+    <h2 class="ue-h2">Évolution</h2>
+    <div class="ue-grid">
+      <div class="ue-card">
+        <h3>Revenus par semaine</h3>
+        <p class="ue-note">Semaine du 05/10 arrêtée au vendredi 9 octobre à 20h.</p>
+        <div class="ue-legend" id="leg-sem"></div>
+        <div class="ue-chart" id="ch-sem" data-source="semaines"></div>
+      </div>
+      <div class="ue-card">
+        <h3>Revenu par journée travaillée</h3>
+        <p class="ue-note">Une course après minuit compte pour la journée de la veille.</p>
+        <div class="ue-chart" id="ch-jours" data-source="journees"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ue-section" id="creneaux">
+    <h2 class="ue-h2">Quand rouler ?</h2>
+    <div class="ue-grid">
+      <div class="ue-card">
+        <h3>Revenu par heure active, selon le créneau</h3>
+        <p class="ue-note">Heure active : temps passé en course, sans compter deux fois les commandes groupées.</p>
+        <div class="ue-chart" id="ch-creneau" data-source="creneaux"></div>
+      </div>
+      <div class="ue-card">
+        <h3>Livraisons par jour et créneau</h3>
+        <p class="ue-note">Où se concentre mon activité. Aucune livraison le week-end sur la période.</p>
+        <div class="ue-chart" id="ch-heat" data-source="heatmap"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ue-section" id="courses">
+    <h2 class="ue-h2">Les courses</h2>
+    <div class="ue-grid">
+      <div class="ue-card">
+        <h3>Durée et prix des courses</h3>
+        <p class="ue-note">Plus une course est longue, mieux elle paie (corrélation <span data-source="correlation" data-field="r" data-row="0">—</span>). Les losanges sont des commandes groupées.</p>
+        <div class="ue-legend" id="leg-scatter"></div>
+        <div class="ue-chart" id="ch-scatter" data-source="livraisons"></div>
+      </div>
+      <div class="ue-card">
+        <h3>Répartition du prix des courses</h3>
+        <p class="ue-note">Nombre de livraisons par tranche de 1 €.</p>
+        <div class="ue-chart" id="ch-hist" data-source="livraisons"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="ue-section" id="detail">
+    <h2 class="ue-h2">Toutes les livraisons</h2>
+    <div class="ue-card">
+      <div class="ue-tools">
+        <label for="ue-search" class="ue-note">Rechercher</label>
+        <input id="ue-search" type="search" placeholder="Mardi, Dîner, L012…">
+        <span class="ue-note" id="ue-count"></span>
+      </div>
+      <div class="ue-tablebox">
+        <table class="ue-table" id="ue-table" data-source="livraisons" data-row-key="id_livraison">
+          <thead><tr>
+            <th data-field="id_livraison"><button type="button" data-k="id_livraison">N°</button></th>
+            <th data-field="journee"><button type="button" data-k="journee">Journée</button></th>
+            <th data-field="jour_semaine"><button type="button" data-k="jour_semaine">Jour</button></th>
+            <th data-field="creneau"><button type="button" data-k="creneau">Créneau</button></th>
+            <th data-field="debut"><button type="button" data-k="debut">Début</button></th>
+            <th data-field="duree_min" class="num"><button type="button" data-k="duree_min" data-num="1">Durée (min)</button></th>
+            <th data-field="prix" class="num"><button type="button" data-k="prix" data-num="1">Prix (€)</button></th>
+            <th data-field="pourboire" class="num"><button type="button" data-k="pourboire" data-num="1">Pourboire (€)</button></th>
+            <th data-field="groupee"><button type="button" data-k="groupee">Groupée</button></th>
+          </tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="ue-section" id="limites">
+    <h2 class="ue-h2">Limites de l'analyse</h2>
+    <ul class="ue-limits">
+      <li>Les relevés Uber ne donnent ni la distance, ni le restaurant, ni la zone : impossible de calculer un revenu au kilomètre.</li>
+      <li>Le temps connecté sans course (l'attente) n'apparaît pas. Le revenu horaire réel est donc plus bas que le revenu par heure active.</li>
+      <li>Trois semaines et 67 livraisons : les écarts entre créneaux sont des tendances à confirmer, pas des certitudes.</li>
+      <li>Revenus bruts, avant cotisations URSSAF de la micro-entreprise et frais de déplacement.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+  const N = (x) => (x === null || x === undefined || x === '' ? NaN : Number(x));
+  const median = (a) => { const s = a.filter((v) => !isNaN(v)).sort((x, y) => x - y); const m = s.length >> 1; return s.length ? (s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2) : NaN; };
+  const r2 = (v) => Math.round(v * 100) / 100;
+
+  dash.calc('kpis', {
+    inputs: ['livraisons', 'journees'],
+    title: 'Chiffres clés',
+    description: 'Totaux et médianes calculés sur toutes les livraisons et journées de la période.',
+    fn: (livraisons, journees) => {
+      const revenu_total = journees.reduce((s, j) => s + Number(j.revenu_total), 0);
+      const minutes = journees.reduce((s, j) => s + Number(j.temps_actif_min), 0);
+      const sorted = (k) => livraisons.map((l) => Number(l[k])).sort((a, b) => a - b);
+      const med = (a) => (a.length % 2 ? a[a.length >> 1] : (a[a.length / 2 - 1] + a[a.length / 2]) / 2);
+      return [{
+        revenu_total: Math.round(revenu_total * 100) / 100,
+        nb_livraisons: livraisons.length,
+        nb_journees: journees.length,
+        revenu_heure: Math.round((revenu_total / (minutes / 60)) * 100) / 100,
+        prix_median: Math.round(med(sorted('prix')) * 100) / 100,
+        duree_mediane: med(sorted('duree_min')),
+      }];
+    },
+  });
+
+  dash.calc('semaines', {
+    inputs: ['livraisons', 'bonus'],
+    title: 'Revenus par semaine',
+    description: 'Courses, pourboires et bonus additionnés par semaine de relevé Uber.',
+    fn: (livraisons, bonus) => {
+      const order = ['Sem. du 21/09', 'Sem. du 28/09', 'Sem. du 05/10'];
+      return order.map((semaine) => {
+        const l = livraisons.filter((r) => r.semaine === semaine);
+        const courses = l.reduce((s, r) => s + Number(r.prix), 0);
+        const pourboires = l.reduce((s, r) => s + Number(r.pourboire), 0);
+        const b = bonus.filter((r) => r.semaine === semaine).reduce((s, r) => s + Number(r.montant), 0);
+        const rd = (v) => Math.round(v * 100) / 100;
+        return { semaine, nb: l.length, courses: rd(courses), pourboires: rd(pourboires), bonus: rd(b), total: rd(courses + pourboires + b) };
+      });
+    },
+  });
+
+  dash.calc('heatmap', {
+    inputs: ['livraisons'],
+    title: 'Livraisons par jour et créneau',
+    description: 'Nombre de livraisons pour chaque jour de la semaine et chaque créneau horaire.',
+    fn: (livraisons) => {
+      const jours = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+      const creneaux = ['Déjeuner (11h-14h)', 'Après-midi (14h-18h)', 'Dîner (18h-22h)', 'Soirée (22h-2h)'];
+      const out = [];
+      jours.forEach((jour) => creneaux.forEach((creneau) => {
+        out.push({ jour, creneau, nb: livraisons.filter((l) => l.jour_semaine === jour && l.creneau === creneau).length });
+      }));
+      return out;
+    },
+  });
+
+  dash.calc('correlation', {
+    inputs: ['livraisons'],
+    title: 'Corrélation durée / prix',
+    description: 'Coefficient de Pearson entre la durée et le prix des courses.',
+    fn: (livraisons) => {
+      const x = livraisons.map((l) => Number(l.duree_min));
+      const y = livraisons.map((l) => Number(l.prix));
+      const n = x.length, mx = x.reduce((a, b) => a + b, 0) / n, my = y.reduce((a, b) => a + b, 0) / n;
+      let sxy = 0, sxx = 0, syy = 0;
+      for (let i = 0; i < n; i++) { sxy += (x[i] - mx) * (y[i] - my); sxx += (x[i] - mx) ** 2; syy += (y[i] - my) ** 2; }
+      return [{ r: Math.round((sxy / Math.sqrt(sxx * syy)) * 100) / 100 }];
+    },
+  });
+
+  const eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
+  const eur0 = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+  const num2 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
+  const fmtKpi = { revenu_total: (v) => eur.format(v), nb_livraisons: (v) => String(v), nb_journees: (v) => String(v), revenu_heure: (v) => eur.format(v) + '/h', prix_median: (v) => eur.format(v), duree_mediane: (v) => num2.format(v) + ' min' };
+
+  // Tooltip partagé
+  function tipFor(box) {
+    let t = box.querySelector('.ue-tip');
+    if (!t) { t = document.createElement('div'); t.className = 'ue-tip'; t.hidden = true; box.appendChild(t); }
+    return {
+      show(ev, lines) {
+        t.replaceChildren();
+        lines.forEach(([k, v, cls], i) => {
+          const d = document.createElement('div');
+          if (i === 0) { d.className = 'k'; d.textContent = k; } else { d.textContent = k + (v !== undefined ? ' : ' + v : ''); }
+          if (cls) d.style.color = cls;
+          t.appendChild(d);
+        });
+        t.hidden = false;
+        const r = box.getBoundingClientRect();
+        let x = ev.clientX - r.left + 12, y = ev.clientY - r.top - 10;
+        const w = t.offsetWidth, h = t.offsetHeight;
+        if (x + w > r.width) x = ev.clientX - r.left - w - 12;
+        if (x < 0) x = 0;
+        if (y + h > r.height) y = r.height - h;
+        if (y < 0) y = 0;
+        t.style.left = x + 'px'; t.style.top = y + 'px';
+      },
+      hide() { t.hidden = true; },
+    };
+  }
+
+  function failOrWait(box, status) {
+    box.querySelectorAll('svg').forEach((s) => s.remove());
+    box.querySelectorAll('.ue-fail').forEach((s) => s.remove());
+    if (status === 'error' || status === 'connect' || status === 'declined' || status === 'missing') {
+      box.classList.remove('dash-skeleton');
+      const f = document.createElement('div'); f.className = 'ue-fail'; f.textContent = 'Échec du chargement'; box.appendChild(f);
+    } else box.classList.add('dash-skeleton');
+  }
+
+  function legend(el, items) {
+    el.replaceChildren();
+    items.forEach(([name, color, diamond]) => {
+      const s = document.createElement('span'); const i = document.createElement('i');
+      i.style.background = color; if (diamond) i.style.transform = 'rotate(45deg) scale(.8)';
+      s.append(i, document.createTextNode(name)); el.appendChild(s);
+    });
+  }
+
+  function cleanAxis(g) { g.attr('font-size', null).attr('font-family', null); g.select('.domain').attr('stroke', 'var(--cds-chart-axis)'); g.selectAll('.tick line').attr('stroke', 'var(--cds-chart-grid)'); }
+
+  // ---------- Revenus par semaine (barres empilées)
+  function drawSemaines() {
+    const box = document.getElementById('ch-sem');
+    const d = dash.data('semaines');
+    if (d.status !== 'ok') return failOrWait(box, d.status);
+    box.classList.remove('dash-skeleton');
+    box.querySelectorAll('svg,.ue-fail').forEach((s) => s.remove());
+    const rows = d.data;
+    const keys = [['courses', 'Courses', dash.colors[0]], ['pourboires', 'Pourboires', dash.colors[1]], ['bonus', 'Bonus', dash.colors[2]]];
+    legend(document.getElementById('leg-sem'), keys.map((k) => [k[1], k[2]]));
+    const W = box.clientWidth, H = 240, m = { t: 22, r: 8, b: 26, l: 40 };
+    const x = d3.scaleBand(rows.map((r) => r.semaine), [m.l, W - m.r]).padding(0.35);
+    const y = d3.scaleLinear([0, d3.max(rows, (r) => r.total) * 1.12], [H - m.b, m.t]).nice();
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('height', H);
+    svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat((v) => v + ' €')).call(cleanAxis).call((g) => g.select('.domain').remove());
+    svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).tickSize(0).tickPadding(8)).call(cleanAxis);
+    const tip = tipFor(box);
+    rows.forEach((r) => {
+      let acc = 0;
+      keys.forEach(([k, , c]) => {
+        const v = r[k]; if (!v) return;
+        const y0 = y(acc), y1 = y(acc + v);
+        svg.append('rect').attr('x', x(r.semaine)).attr('width', x.bandwidth()).attr('y', y1).attr('height', Math.max(0, y0 - y1 - (acc ? 2 : 0))).attr('fill', c).attr('rx', acc ? 0 : 0);
+        acc += v;
+      });
+      svg.append('text').attr('class', 'ue-val').attr('x', x(r.semaine) + x.bandwidth() / 2).attr('y', y(r.total) - 6).attr('text-anchor', 'middle').text(eur.format(r.total));
+      svg.append('rect').attr('x', x(r.semaine)).attr('width', x.bandwidth()).attr('y', m.t).attr('height', H - m.b - m.t).attr('fill', 'transparent')
+        .on('mousemove', (ev) => tip.show(ev, [[r.semaine], ['Courses', eur.format(r.courses)], ['Pourboires', eur.format(r.pourboires)], ['Bonus', eur.format(r.bonus)], ['Total', eur.format(r.total)], [r.nb + ' livraisons']]))
+        .on('mouseleave', tip.hide);
+    });
+  }
+
+  // ---------- Revenu par journée
+  function drawJours() {
+    const box = document.getElementById('ch-jours');
+    const d = dash.data('journees');
+    if (d.status !== 'ok') return failOrWait(box, d.status);
+    box.classList.remove('dash-skeleton');
+    box.querySelectorAll('svg,.ue-fail').forEach((s) => s.remove());
+    const rows = d.data.map((r) => ({ ...r, date: new Date(r.journee + 'T12:00:00'), v: N(r.revenu_total) }));
+    const W = box.clientWidth, H = 240, m = { t: 18, r: 8, b: 30, l: 40 };
+    const fmtD = (dt) => dt.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' }).replace('.', '');
+    const x = d3.scaleBand(rows.map((r) => r.journee), [m.l, W - m.r]).padding(0.25);
+    const y = d3.scaleLinear([0, d3.max(rows, (r) => r.v) * 1.1], [H - m.b, m.t]).nice();
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('height', H);
+    svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat((v) => v + ' €')).call(cleanAxis).call((g) => g.select('.domain').remove());
+    const every = Math.ceil(rows.length / Math.max(1, Math.floor((W - m.l) / 52)));
+    svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).tickSize(0).tickPadding(8).tickValues(rows.filter((_, i) => i % every === 0).map((r) => r.journee)).tickFormat((k) => fmtD(new Date(k + 'T12:00:00')))).call(cleanAxis);
+    const tip = tipFor(box);
+    svg.selectAll('rect.b').data(rows).join('rect').attr('class', 'b').attr('x', (r) => x(r.journee)).attr('width', x.bandwidth())
+      .attr('y', (r) => y(r.v)).attr('height', (r) => y(0) - y(r.v)).attr('rx', 3).attr('fill', dash.colors[0])
+      .on('mousemove', (ev, r) => tip.show(ev, [[r.date.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })], ['Revenu', eur.format(r.v)], ['Livraisons', r.nb_livraisons], ['En course', Math.round(N(r.temps_actif_min)) + ' min'], ['Revenu / heure active', eur.format(N(r.revenu_par_heure_active))], ['De ' + r.premiere_course + ' à ' + r.derniere_course]]))
+      .on('mouseleave', tip.hide);
+  }
+
+  // ---------- Revenu par heure, par créneau
+  function drawCreneaux() {
+    const box = document.getElementById('ch-creneau');
+    const d = dash.data('creneaux');
+    if (d.status !== 'ok') return failOrWait(box, d.status);
+    box.classList.remove('dash-skeleton');
+    box.querySelectorAll('svg,.ue-fail').forEach((s) => s.remove());
+    const rows = d.data.map((r) => ({ ...r, v: N(r.revenu_heure), nb: N(r.nb) }));
+    const W = box.clientWidth, H = 240;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('height', H);
+    const probe = svg.append('text').text('Après-midi (14h-18h)');
+    const lw = probe.node().getComputedTextLength() + 10; probe.remove();
+    const vw = 70;
+    const narrow = W < 380;
+    const m = { t: 8, r: vw, b: 8, l: narrow ? 0 : lw };
+    const y = d3.scaleBand(rows.map((r) => r.creneau), [m.t, H - m.b]).padding(narrow ? 0.5 : 0.35);
+    const x = d3.scaleLinear([0, d3.max(rows, (r) => r.v)], [m.l, W - m.r]);
+    const best = d3.max(rows, (r) => r.v);
+    const tip = tipFor(box);
+    rows.forEach((r) => {
+      const yy = y(r.creneau), bh = Math.min(28, y.bandwidth());
+      svg.append('text').attr('x', narrow ? 0 : m.l - 10).attr('y', narrow ? yy - 4 : yy + bh / 2).attr('dy', narrow ? 0 : '0.35em').attr('text-anchor', narrow ? 'start' : 'end').text(r.creneau);
+      svg.append('rect').attr('x', m.l).attr('y', yy).attr('height', bh).attr('width', Math.max(0, x(r.v) - m.l)).attr('rx', 4)
+        .attr('fill', r.v === best ? dash.colors[0] : 'var(--cds-chart-muted)')
+        .on('mousemove', (ev) => tip.show(ev, [[r.creneau], ['Revenu / heure active', eur.format(r.v)], ['Livraisons', r.nb], ['Prix moyen', eur.format(N(r.prix_moyen))], ['Durée médiane', num2.format(N(r.duree_mediane)) + ' min'], ['Part du revenu', Math.round(N(r.part_revenu) * 100) + ' %']]))
+        .on('mouseleave', tip.hide);
+      svg.append('text').attr('class', 'ue-val').attr('x', x(r.v) + 6).attr('y', yy + bh / 2).attr('dy', '0.35em').text(eur.format(r.v) + '/h');
+    });
+  }
+
+  // ---------- Heatmap
+  function drawHeat() {
+    const box = document.getElementById('ch-heat');
+    const d = dash.data('heatmap');
+    if (d.status !== 'ok') return failOrWait(box, d.status);
+    box.classList.remove('dash-skeleton');
+    box.querySelectorAll('svg,.ue-fail').forEach((s) => s.remove());
+    const rows = d.data;
+    const jours = [...new Set(rows.map((r) => r.jour))];
+    const cren = [...new Set(rows.map((r) => r.creneau))];
+    const W = box.clientWidth, H = 260;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('height', H);
+    const m = { t: 34, r: 4, b: 4, l: 64 };
+    const x = d3.scaleBand(cren, [m.l, W - m.r]).padding(0.06);
+    const y = d3.scaleBand(jours, [m.t, H - m.b]).padding(0.08);
+    const max = d3.max(rows, (r) => r.nb);
+    const panel = getComputedStyle(box).getPropertyValue('--color-panel').trim() || '#fff';
+    const col = d3.interpolateRgb(panel, dash.colors[0]);
+    cren.forEach((c) => svg.append('text').attr('x', x(c) + x.bandwidth() / 2).attr('y', 14).attr('text-anchor', 'middle').text(c.split(' ')[0]));
+    cren.forEach((c) => svg.append('text').attr('x', x(c) + x.bandwidth() / 2).attr('y', 27).attr('text-anchor', 'middle').text(c.slice(c.indexOf('(') + 1, -1)));
+    jours.forEach((j) => svg.append('text').attr('x', m.l - 8).attr('y', y(j) + y.bandwidth() / 2).attr('dy', '0.35em').attr('text-anchor', 'end').text(j));
+    const tip = tipFor(box);
+    rows.forEach((r) => {
+      const t = r.nb / max;
+      svg.append('rect').attr('x', x(r.creneau)).attr('y', y(r.jour)).attr('width', x.bandwidth()).attr('height', y.bandwidth()).attr('rx', 4)
+        .attr('fill', r.nb ? col(0.18 + 0.82 * t) : 'transparent').attr('stroke', 'var(--color-border-line)')
+        .on('mousemove', (ev) => tip.show(ev, [[r.jour + ' · ' + r.creneau], [r.nb + (r.nb > 1 ? ' livraisons' : ' livraison')]]))
+        .on('mouseleave', tip.hide);
+      svg.append('text').attr('x', x(r.creneau) + x.bandwidth() / 2).attr('y', y(r.jour) + y.bandwidth() / 2).attr('dy', '0.35em').attr('text-anchor', 'middle')
+        .attr('pointer-events', 'none').style('fill', r.nb && t > 0.55 ? '#fff' : 'var(--color-fg)').text(r.nb || '·');
+    });
+  }
+
+  // ---------- Nuage durée / prix
+  function drawScatter() {
+    const box = document.getElementById('ch-scatter');
+    const d = dash.data('livraisons');
+    if (d.status !== 'ok') return failOrWait(box, d.status);
+    box.classList.remove('dash-skeleton');
+    box.querySelectorAll('svg,.ue-fail').forEach((s) => s.remove());
+    legend(document.getElementById('leg-scatter'), [['Course seule', dash.colors[0]], ['Commande groupée', dash.colors[1], true]]);
+    const rows = d.data.map((r) => ({ ...r, x: N(r.duree_min), y: N(r.prix), g: String(r.groupee) === 'True' }));
+    const W = box.clientWidth, H = 260, m = { t: 10, r: 12, b: 36, l: 40 };
+    const x = d3.scaleLinear([0, d3.max(rows, (r) => r.x) * 1.05], [m.l, W - m.r]).nice();
+    const y = d3.scaleLinear([0, d3.max(rows, (r) => r.y) * 1.08], [H - m.b, m.t]).nice();
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('height', H);
+    svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat((v) => v + ' €')).call(cleanAxis).call((g) => g.select('.domain').remove());
+    svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(Math.max(3, Math.floor(W / 80))).tickFormat((v) => v + ' min')).call(cleanAxis);
+    const tip = tipFor(box);
+    const sym = d3.symbol().size(70);
+    svg.selectAll('path.pt').data(rows).join('path').attr('class', 'pt')
+      .attr('d', (r) => sym.type(r.g ? d3.symbolDiamond : d3.symbolCircle)())
+      .attr('transform', (r) => `translate(${x(r.x)},${y(r.y)})`)
+      .attr('fill', (r) => (r.g ? dash.colors[1] : dash.colors[0])).attr('stroke', 'var(--color-panel)').attr('stroke-width', 1.5)
+      .on('mousemove', (ev, r) => tip.show(ev, [[r.id_livraison + ' · ' + r.jour_semaine + ' ' + r.debut.slice(11, 16)], ['Durée', r.x + ' min'], ['Prix', eur.format(r.y)], [r.g ? 'Commande groupée' : 'Course seule']]))
+      .on('mouseleave', tip.hide);
+  }
+
+  // ---------- Histogramme des prix
+  function drawHist() {
+    const box = document.getElementById('ch-hist');
+    const d = dash.data('livraisons');
+    if (d.status !== 'ok') return failOrWait(box, d.status);
+    box.classList.remove('dash-skeleton');
+    box.querySelectorAll('svg,.ue-fail').forEach((s) => s.remove());
+    const vals = d.data.map((r) => N(r.prix));
+    const bins = d3.bin().domain([3, 14]).thresholds(d3.range(3, 15, 1))(vals);
+    const W = box.clientWidth, H = 240, m = { t: 18, r: 8, b: 30, l: 34 };
+    const x = d3.scaleLinear([3, 14], [m.l, W - m.r]);
+    const y = d3.scaleLinear([0, d3.max(bins, (b) => b.length) * 1.1], [H - m.b, m.t]).nice();
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${H}`).attr('height', H);
+    svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r))).call(cleanAxis).call((g) => g.select('.domain').remove());
+    svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(Math.min(11, Math.floor(W / 40))).tickFormat((v) => v + ' €')).call(cleanAxis);
+    const tip = tipFor(box);
+    svg.selectAll('rect.h').data(bins).join('rect').attr('class', 'h').attr('x', (b) => x(b.x0) + 1).attr('width', (b) => Math.max(0, x(b.x1) - x(b.x0) - 2))
+      .attr('y', (b) => y(b.length)).attr('height', (b) => y(0) - y(b.length)).attr('rx', 3).attr('fill', dash.colors[0])
+      .on('mousemove', (ev, b) => tip.show(ev, [[b.x0 + ' € à ' + b.x1 + ' €'], [b.length + ' livraisons']]))
+      .on('mouseleave', tip.hide);
+    const med = median(vals);
+    svg.append('line').attr('x1', x(med)).attr('x2', x(med)).attr('y1', m.t).attr('y2', H - m.b).attr('stroke', 'var(--cds-chart-reference)').attr('stroke-dasharray', '4 3');
+    svg.append('text').attr('class', 'ue-val').attr('x', x(med) + 5).attr('y', m.t + 4).text('médiane ' + eur.format(med));
+  }
+
+  // ---------- Tableau
+  let sortKey = 'id_livraison', sortDir = 1;
+  function drawTable() {
+    const d = dash.data('livraisons');
+    const tb = document.querySelector('#ue-table tbody');
+    const q = (document.getElementById('ue-search').value || '').trim().toLowerCase();
+    tb.replaceChildren();
+    if (d.status !== 'ok') { document.getElementById('ue-count').textContent = ''; return; }
+    const isNum = document.querySelector(`#ue-table button[data-k="${sortKey}"]`)?.dataset.num;
+    let rows = d.data.slice();
+    if (q) rows = rows.filter((r) => Object.values(r).join(' ').toLowerCase().includes(q));
+    rows.sort((a, b) => (isNum ? (N(a[sortKey]) - N(b[sortKey])) : String(a[sortKey]).localeCompare(String(b[sortKey]))) * sortDir);
+    document.querySelectorAll('#ue-table th').forEach((th) => th.removeAttribute('aria-sort'));
+    const th = document.querySelector(`#ue-table button[data-k="${sortKey}"]`)?.parentElement;
+    if (th) th.setAttribute('aria-sort', sortDir > 0 ? 'ascending' : 'descending');
+    rows.forEach((r) => {
+      const tr = document.createElement('tr');
+      const cell = (txt, num) => { const td = document.createElement('td'); td.textContent = txt; if (num) td.className = 'num'; tr.appendChild(td); };
+      cell(r.id_livraison);
+      cell(r.journee);
+      cell(r.jour_semaine);
+      cell(r.creneau);
+      cell(String(r.debut).slice(11, 16));
+      cell(num2.format(N(r.duree_min)), true);
+      cell(num2.format(N(r.prix)), true);
+      cell(N(r.pourboire) ? num2.format(N(r.pourboire)) : '', true);
+      const td = document.createElement('td'); if (String(r.groupee) === 'True') { const p = document.createElement('span'); p.className = 'ue-pill'; p.textContent = 'Oui'; td.appendChild(p); } tr.appendChild(td);
+      tb.appendChild(tr);
+    });
+    document.getElementById('ue-count').textContent = rows.length + ' livraison' + (rows.length > 1 ? 's' : '');
+  }
+  document.querySelectorAll('#ue-table th button').forEach((b) => b.addEventListener('click', () => {
+    if (sortKey === b.dataset.k) sortDir = -sortDir; else { sortKey = b.dataset.k; sortDir = b.dataset.num ? -1 : 1; }
+    drawTable();
+  }));
+  document.getElementById('ue-search').addEventListener('input', drawTable);
+
+  // ---------- Chiffres
+  function fillFigures() {
+    const k = dash.data('kpis');
+    document.querySelectorAll('[data-source="kpis"]').forEach((el) => {
+      if (k.status === 'ok' && k.data[0]) { el.textContent = fmtKpi[el.dataset.field](k.data[0][el.dataset.field]); el.classList.remove('dash-skeleton'); }
+      else { el.textContent = '—'; if (k.status !== 'loading') el.classList.remove('dash-skeleton'); }
+    });
+    const s = dash.data('semaines');
+    document.querySelectorAll('[data-source="semaines"][data-field]').forEach((el) => {
+      const sem = decodeURIComponent(el.dataset.where.split('=')[1]);
+      const r = s.status === 'ok' ? s.data.find((x) => x.semaine === sem) : null;
+      el.textContent = r ? (el.dataset.field === 'nb' ? String(r.nb) : eur.format(r[el.dataset.field])) : '—';
+      if (s.status !== 'loading') el.classList.remove('dash-skeleton');
+    });
+    const c = dash.data('correlation');
+    document.querySelectorAll('[data-source="correlation"]').forEach((el) => {
+      el.textContent = c.status === 'ok' && c.data[0] ? 'r = ' + num2.format(c.data[0].r) : '—';
+    });
+  }
+
+  dash.onData(() => {
+    fillFigures();
+    drawSemaines();
+    drawJours();
+    drawCreneaux();
+    drawHeat();
+    drawScatter();
+    drawHist();
+    drawTable();
+  });
+</script>

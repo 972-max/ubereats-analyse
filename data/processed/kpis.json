@@ -1,0 +1,18 @@
+{
+  "periode": "22/09/2026 au 08/10/2026",
+  "revenu_total": 447.15,
+  "revenu_courses": 416.89,
+  "pourboires": 16.76,
+  "bonus": 13.5,
+  "nb_livraisons": 67,
+  "nb_journees": 11,
+  "prix_moyen": 6.22,
+  "prix_median": 5.58,
+  "duree_mediane_min": 25.0,
+  "heures_actives": 33.1,
+  "revenu_par_heure_active": 13.51,
+  "taux_pourboire_pct": 6.0,
+  "part_commandes_groupees_pct": 23.9,
+  "versements_recus": 238.31,
+  "correlation_duree_prix": 0.7
+}
