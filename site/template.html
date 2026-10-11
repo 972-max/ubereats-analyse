@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Livraisons Uber Eats — analyse</title>
+<meta name="description" content="Analyse de mon activité de livreur Uber Eats : revenus, créneaux rentables, durée et prix des courses.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter+Tight:wght@400;500;600&display=swap">
+<style>
+  /* Mise en page : en-tête + chiffres clés, puis sections de cartes en grille fluide */
+  :root {
+    --bg: #f7f7f4; --panel: #ffffff; --ink: #121210; --muted: #5c5b55; --line: #e4e3dc;
+    --grid: #ecebe5; --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --muted-bar: #c9c8c0;
+    --tip: #ffffff;
+    --display: "Fraunces", Georgia, serif;
+    --body: "Inter Tight", system-ui, -apple-system, "Segoe UI", sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #151514; --panel: #1d1d1b; --ink: #f3f2ec; --muted: #b5b4ab; --line: #34342f;
+      --grid: #2a2a27; --s1: #3987e5; --s2: #d95926; --s3: #199e70; --muted-bar: #4a4a45; --tip: #262624;
+      color-scheme: dark; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--body); font-variant-numeric: tabular-nums; }
+  .wrap { max-width: 1120px; margin-inline: auto; padding: 32px 20px 56px; display: grid; gap: 28px; }
+  header { display: grid; gap: 8px; }
+  .eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  h1 { font: 600 clamp(28px, 4vw, 40px)/1.1 var(--display); margin: 0; text-wrap: balance; }
+  .lead { color: var(--muted); max-width: 70ch; margin: 0; }
+  .lead b { color: var(--ink); font-weight: 600; }
+  .links { display: flex; flex-wrap: wrap; gap: 14px; font-size: 14px; }
+  .links a { color: var(--s1); }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap: 12px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 4px; }
+  .tile span { font-size: 12.5px; color: var(--muted); }
+  .tile strong { font: 400 28px/1.1 var(--display); }
+  section { display: grid; gap: 12px; }
+  h2 { font: 600 20px/1.2 var(--display); margin: 0; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 14px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: grid; gap: 8px; min-width: 0; }
+  .card h3 { margin: 0; font-size: 15px; font-weight: 600; }
+  .note { margin: 0; font-size: 13px; color: var(--muted); }
+  .chart { position: relative; min-height: 240px; }
+  .chart svg { display: block; width: 100%; overflow: visible; }
+  .chart text { font: 11.5px var(--body); fill: var(--muted); }
+  .chart .val { fill: var(--ink); font-weight: 600; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--muted); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .tip { position: absolute; pointer-events: none; background: var(--tip); border: 1px solid var(--line); border-radius: 8px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.12); padding: 6px 10px; font-size: 12.5px; white-space: nowrap; z-index: 3; }
+  .tip .k { color: var(--muted); }
+  .findings { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; max-width: 75ch; }
+  .tools { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .tools input { font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--ink); flex: 1 1 12rem; max-width: 20rem; }
+  .tablebox { max-height: 26rem; overflow: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { position: sticky; top: 0; background: var(--panel); text-align: left; border-bottom: 1px solid var(--line); padding: 0; }
+  th button { all: unset; cursor: pointer; display: block; padding: 7px 8px; color: var(--muted); font-weight: 600; }
+  th button:focus-visible { outline: 2px solid var(--s1); }
+  td { padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .num { text-align: right; }
+  .pill { display: inline-block; padding: 0 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+  footer { font-size: 13px; color: var(--muted); }
+  footer a { color: var(--s1); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Projet personnel · Data analyse</div>
+    <h1>Mes livraisons Uber Eats, en chiffres</h1>
+    <p class="lead" id="lead"></p>
+    <div class="links">
+      <a href="https://github.com/972-max/ubereats-analyse">Code source et méthode (GitHub)</a>
+      <a href="https://linkedin.com/in/nathan-babootarie">Nathan Babootarie · LinkedIn</a>
+    </div>
+  </header>
+
+  <div class="tiles" id="tiles"></div>
+
+  <section>
+    <h2>Évolution</h2>
+    <div class="grid">
+      <div class="card"><h3>Revenus par semaine</h3><p class="note">Semaine du 05/10 arrêtée au vendredi 9 octobre.</p><div class="legend" id="leg-sem"></div><div class="chart" id="ch-sem"></div></div>
+      <div class="card"><h3>Revenu par journée travaillée</h3><p class="note">Une course commencée après minuit compte pour la veille.</p><div class="chart" id="ch-jours"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Quand rouler ?</h2>
+    <div class="grid">
+      <div class="card"><h3>Revenu par heure active, selon le créneau</h3><p class="note">Heure active : temps passé en course, sans compter deux fois les commandes groupées.</p><div class="chart" id="ch-cren"></div></div>
+      <div class="card"><h3>Livraisons par jour et créneau</h3><p class="note">Aucune livraison le week-end sur la période.</p><div class="chart" id="ch-heat"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Les courses</h2>
+    <div class="grid">
+      <div class="card"><h3>Durée et prix des courses</h3><p class="note" id="corr-note"></p><div class="legend" id="leg-sc"></div><div class="chart" id="ch-sc"></div></div>
+      <div class="card"><h3>Répartition du prix des courses</h3><p class="note">Nombre de livraisons par tranche de 1 €.</p><div class="chart" id="ch-hist"></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Ce que j'en retiens</h2>
+    <ul class="findings" id="findings"></ul>
+  </section>
+
+  <section>
+    <h2>Toutes les livraisons</h2>
+    <div class="card">
+      <div class="tools"><label for="q" class="note">Rechercher</label><input id="q" type="search" placeholder="Mardi, Dîner, L012…"><span class="note" id="count"></span></div>
+      <div class="tablebox"><table id="tbl"><thead><tr>
+        <th><button data-k="id_livraison">N°</button></th><th><button data-k="journee">Journée</button></th>
+        <th><button data-k="jour_semaine">Jour</button></th><th><button data-k="creneau">Créneau</button></th>
+        <th><button data-k="debut">Début</button></th><th class="num"><button data-k="duree_min" data-n="1">Durée (min)</button></th>
+        <th class="num"><button data-k="prix" data-n="1">Prix (€)</button></th><th class="num"><button data-k="pourboire" data-n="1">Pourboire (€)</button></th>
+        <th><button data-k="groupee">Groupée</button></th></tr></thead><tbody></tbody></table></div>
+    </div>
+  </section>
+
+  <footer>Limites : les relevés Uber ne donnent ni la distance ni la zone, et le temps d'attente entre deux courses n'est pas connu. Revenus bruts, avant cotisations URSSAF. Données réelles de mes relevés, période du <span id="periode"></span>.</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+const DATA = __DATA__;
+const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+const eur = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
+const n2 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
+const K = DATA.kpis;
+
+// En-tête et chiffres clés
+const last = DATA.semaines[DATA.semaines.length - 1], prev = DATA.semaines[DATA.semaines.length - 2];
+const prixSem = DATA.semaines.map((s) => s.courses / s.nb);
+document.getElementById('lead').innerHTML =
+  `Du ${K.periode.replace(' au ', ' au ')}, j'ai gagné <b>${eur.format(K.revenu_total)}</b> en <b>${K.nb_livraisons} livraisons</b>. ` +
+  `La dernière semaine rapporte <b>${eur.format(last.total)}</b> (+${Math.round((last.total / prev.total - 1) * 100)} %), grâce au volume : ` +
+  `le prix moyen d'une course baisse de ${eur.format(prixSem[0])} à ${eur.format(prixSem[prixSem.length - 1])}.`;
+document.getElementById('periode').textContent = K.periode;
+const tiles = [
+  ['Revenu total', eur.format(K.revenu_total)], ['Livraisons', K.nb_livraisons],
+  ['Revenu par heure active', eur.format(K.revenu_par_heure_active) + '/h'], ['Prix médian', eur.format(K.prix_median)],
+  ['Durée médiane', n2.format(K.duree_mediane_min) + ' min'], ['Commandes groupées', n2.format(K.part_commandes_groupees_pct) + ' %'],
+];
+document.getElementById('tiles').innerHTML = tiles.map(([l, v]) => `<div class="tile"><span>${l}</span><strong>${v}</strong></div>`).join('');
+document.getElementById('corr-note').textContent = `Plus une course est longue, mieux elle paie (corrélation r = ${n2.format(K.correlation_duree_prix)}). Les losanges sont des commandes groupées.`;
+
+const best = DATA.creneaux.reduce((a, b) => (b.revenu_heure > a.revenu_heure ? b : a));
+const vol = DATA.creneaux.reduce((a, b) => (b.nb > a.nb ? b : a));
+document.getElementById('findings').innerHTML = [
+  `Le revenu progresse grâce au <b>nombre de courses</b>, pas à leur prix : il faut maximiser les heures sur les créneaux chargés.`,
+  `Le <b>${vol.creneau.split(' (')[0].toLowerCase()}</b> fait le volume (${vol.nb} livraisons), l'<b>${best.creneau.split(' (')[0].toLowerCase()}</b> paie le mieux à l'heure (${eur.format(best.revenu_heure)}/h), sur peu de courses : à confirmer.`,
+  `Le prix dépend surtout de la <b>durée</b> de la course (r = ${n2.format(K.correlation_duree_prix)}).`,
+  `Les pourboires restent rares : ${n2.format(K.taux_pourboire_pct)} % des livraisons.`,
+].map((t) => `<li>${t}</li>`).join('');
+
+// Infobulle
+function tip(box) {
+  let t = box.querySelector('.tip');
+  if (!t) { t = document.createElement('div'); t.className = 'tip'; t.hidden = true; box.appendChild(t); }
+  return {
+    show(ev, lines) {
+      t.innerHTML = lines.map((l, i) => `<div class="${i ? '' : 'k'}">${l}</div>`).join('');
+      t.hidden = false;
+      const r = box.getBoundingClientRect();
+      let x = ev.clientX - r.left + 12, y = ev.clientY - r.top - 10;
+      if (x + t.offsetWidth > r.width) x = ev.clientX - r.left - t.offsetWidth - 12;
+      t.style.left = Math.max(0, x) + 'px'; t.style.top = Math.max(0, Math.min(y, r.height - t.offsetHeight)) + 'px';
+    },
+    hide() { t.hidden = true; },
+  };
+}
+const axis = (g) => { g.attr('font-size', null).attr('font-family', null); g.select('.domain').attr('stroke', css('--line')); g.selectAll('.tick line').attr('stroke', css('--grid')); };
+const svgIn = (id, H) => { const box = document.getElementById(id); box.querySelectorAll('svg').forEach((s) => s.remove()); const W = box.clientWidth; return [box, W, d3.select(box).append('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('height', H)]; };
+const legend = (id, items) => { document.getElementById(id).innerHTML = items.map(([n, c, d]) => `<span><i style="background:${c};${d ? 'transform:rotate(45deg) scale(.8)' : ''}"></i>${n}</span>`).join(''); };
+
+function drawSem() {
+  const [box, W, svg] = svgIn('ch-sem', 240), H = 240, m = { t: 22, r: 8, b: 26, l: 44 };
+  const keys = [['courses', 'Courses', css('--s1')], ['pourboires', 'Pourboires', css('--s2')], ['bonus', 'Bonus', css('--s3')]];
+  legend('leg-sem', keys.map((k) => [k[1], k[2]]));
+  const x = d3.scaleBand(DATA.semaines.map((d) => d.semaine), [m.l, W - m.r]).padding(0.35);
+  const y = d3.scaleLinear([0, d3.max(DATA.semaines, (d) => d.total) * 1.15], [H - m.b, m.t]).nice();
+  svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat((v) => v + ' €')).call(axis).call((g) => g.select('.domain').remove());
+  svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).tickSize(0).tickPadding(8)).call(axis);
+  const tp = tip(box);
+  DATA.semaines.forEach((d) => {
+    let acc = 0;
+    keys.forEach(([k, , c]) => { if (!d[k]) return; svg.append('rect').attr('x', x(d.semaine)).attr('width', x.bandwidth()).attr('y', y(acc + d[k])).attr('height', Math.max(0, y(acc) - y(acc + d[k]) - (acc ? 2 : 0))).attr('fill', c); acc += d[k]; });
+    svg.append('text').attr('class', 'val').attr('x', x(d.semaine) + x.bandwidth() / 2).attr('y', y(d.total) - 6).attr('text-anchor', 'middle').text(eur.format(d.total));
+    svg.append('rect').attr('x', x(d.semaine)).attr('width', x.bandwidth()).attr('y', m.t).attr('height', H - m.b - m.t).attr('fill', 'transparent')
+      .on('mousemove', (ev) => tp.show(ev, [d.semaine, `Courses : ${eur.format(d.courses)}`, `Pourboires : ${eur.format(d.pourboires)}`, `Bonus : ${eur.format(d.bonus)}`, `${d.nb} livraisons`])).on('mouseleave', tp.hide);
+  });
+}
+
+function drawJours() {
+  const [box, W, svg] = svgIn('ch-jours', 240), H = 240, m = { t: 18, r: 8, b: 30, l: 44 };
+  const x = d3.scaleBand(DATA.jours.map((d) => d.journee), [m.l, W - m.r]).padding(0.25);
+  const y = d3.scaleLinear([0, d3.max(DATA.jours, (d) => d.revenu_total) * 1.1], [H - m.b, m.t]).nice();
+  const fmt = (k) => new Date(k + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' }).replace('.', '');
+  const every = Math.ceil(DATA.jours.length / Math.max(1, Math.floor((W - m.l) / 52)));
+  svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat((v) => v + ' €')).call(axis).call((g) => g.select('.domain').remove());
+  svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).tickSize(0).tickPadding(8).tickValues(DATA.jours.filter((_, i) => i % every === 0).map((d) => d.journee)).tickFormat(fmt)).call(axis);
+  const tp = tip(box);
+  svg.selectAll('rect.b').data(DATA.jours).join('rect').attr('x', (d) => x(d.journee)).attr('width', x.bandwidth()).attr('y', (d) => y(d.revenu_total)).attr('height', (d) => y(0) - y(d.revenu_total)).attr('rx', 3).attr('fill', css('--s1'))
+    .on('mousemove', (ev, d) => tp.show(ev, [new Date(d.journee + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' }), `Revenu : ${eur.format(d.revenu_total)}`, `${d.nb_livraisons} livraisons`, `${Math.round(d.temps_actif_min)} min en course`, `${eur.format(d.revenu_par_heure_active)} / heure active`])).on('mouseleave', tp.hide);
+}
+
+function drawCren() {
+  const [box, W, svg] = svgIn('ch-cren', 240), H = 240;
+  const narrow = W < 400, lw = narrow ? 0 : 140, m = { t: 14, r: 76, b: 8, l: lw };
+  const y = d3.scaleBand(DATA.creneaux.map((d) => d.creneau), [m.t, H - m.b]).padding(narrow ? 0.5 : 0.35);
+  const x = d3.scaleLinear([0, d3.max(DATA.creneaux, (d) => d.revenu_heure)], [m.l, W - m.r]);
+  const tp = tip(box);
+  DATA.creneaux.forEach((d) => {
+    const yy = y(d.creneau), bh = Math.min(28, y.bandwidth());
+    svg.append('text').attr('x', narrow ? 0 : m.l - 10).attr('y', narrow ? yy - 4 : yy + bh / 2).attr('dy', narrow ? 0 : '0.35em').attr('text-anchor', narrow ? 'start' : 'end').text(d.creneau);
+    svg.append('rect').attr('x', m.l).attr('y', yy).attr('height', bh).attr('width', x(d.revenu_heure) - m.l).attr('rx', 4).attr('fill', d === best ? css('--s1') : css('--muted-bar'))
+      .on('mousemove', (ev) => tp.show(ev, [d.creneau, `${eur.format(d.revenu_heure)} / heure active`, `${d.nb} livraisons`, `Prix moyen : ${eur.format(d.prix_moyen)}`, `Part du revenu : ${Math.round(d.part_revenu * 100)} %`])).on('mouseleave', tp.hide);
+    svg.append('text').attr('class', 'val').attr('x', x(d.revenu_heure) + 6).attr('y', yy + bh / 2).attr('dy', '0.35em').text(eur.format(d.revenu_heure) + '/h');
+  });
+}
+
+function drawHeat() {
+  const [box, W, svg] = svgIn('ch-heat', 250), H = 250, m = { t: 34, r: 4, b: 4, l: 72 };
+  const h = DATA.heatmap, x = d3.scaleBand(h.creneaux, [m.l, W - m.r]).padding(0.06), y = d3.scaleBand(h.jours, [m.t, H - m.b]).padding(0.08);
+  const max = d3.max(h.valeurs.flat()), col = d3.interpolateRgb(css('--panel'), css('--s1'));
+  h.creneaux.forEach((c) => { svg.append('text').attr('x', x(c) + x.bandwidth() / 2).attr('y', 13).attr('text-anchor', 'middle').text(c.split(' (')[0]); svg.append('text').attr('x', x(c) + x.bandwidth() / 2).attr('y', 26).attr('text-anchor', 'middle').text(c.slice(c.indexOf('(') + 1, -1)); });
+  h.jours.forEach((j) => svg.append('text').attr('x', m.l - 8).attr('y', y(j) + y.bandwidth() / 2).attr('dy', '0.35em').attr('text-anchor', 'end').text(j));
+  const tp = tip(box);
+  h.jours.forEach((j, i) => h.creneaux.forEach((c, k) => {
+    const v = h.valeurs[i][k], t = v / max;
+    svg.append('rect').attr('x', x(c)).attr('y', y(j)).attr('width', x.bandwidth()).attr('height', y.bandwidth()).attr('rx', 4).attr('fill', v ? col(0.18 + 0.82 * t) : 'transparent').attr('stroke', css('--line'))
+      .on('mousemove', (ev) => tp.show(ev, [`${j} · ${c}`, `${v} livraison${v > 1 ? 's' : ''}`])).on('mouseleave', tp.hide);
+    svg.append('text').attr('x', x(c) + x.bandwidth() / 2).attr('y', y(j) + y.bandwidth() / 2).attr('dy', '0.35em').attr('text-anchor', 'middle').attr('pointer-events', 'none').style('fill', v && t > 0.55 ? '#fff' : css('--ink')).text(v || '·');
+  }));
+}
+
+function drawScatter() {
+  const [box, W, svg] = svgIn('ch-sc', 260), H = 260, m = { t: 10, r: 12, b: 34, l: 44 };
+  legend('leg-sc', [['Course seule', css('--s1')], ['Commande groupée', css('--s2'), true]]);
+  const L = DATA.livraisons;
+  const x = d3.scaleLinear([0, d3.max(L, (d) => d.duree_min) * 1.05], [m.l, W - m.r]).nice(), y = d3.scaleLinear([0, d3.max(L, (d) => d.prix) * 1.08], [H - m.b, m.t]).nice();
+  svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat((v) => v + ' €')).call(axis).call((g) => g.select('.domain').remove());
+  svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(Math.max(3, Math.floor(W / 80))).tickFormat((v) => v + ' min')).call(axis);
+  const tp = tip(box), sym = d3.symbol().size(70);
+  svg.selectAll('path.p').data(L).join('path').attr('d', (d) => sym.type(d.groupee ? d3.symbolDiamond : d3.symbolCircle)()).attr('transform', (d) => `translate(${x(d.duree_min)},${y(d.prix)})`)
+    .attr('fill', (d) => (d.groupee ? css('--s2') : css('--s1'))).attr('stroke', css('--panel')).attr('stroke-width', 1.5)
+    .on('mousemove', (ev, d) => tp.show(ev, [`${d.id_livraison} · ${d.jour_semaine} ${d.debut.slice(11, 16)}`, `Durée : ${d.duree_min} min`, `Prix : ${eur.format(d.prix)}`])).on('mouseleave', tp.hide);
+}
+
+function drawHist() {
+  const [box, W, svg] = svgIn('ch-hist', 240), H = 240, m = { t: 18, r: 8, b: 30, l: 34 };
+  const vals = DATA.livraisons.map((d) => d.prix), bins = d3.bin().domain([3, 14]).thresholds(d3.range(3, 15))(vals);
+  const x = d3.scaleLinear([3, 14], [m.l, W - m.r]), y = d3.scaleLinear([0, d3.max(bins, (b) => b.length) * 1.1], [H - m.b, m.t]).nice();
+  svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r))).call(axis).call((g) => g.select('.domain').remove());
+  svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).ticks(Math.min(11, Math.floor(W / 40))).tickFormat((v) => v + ' €')).call(axis);
+  const tp = tip(box);
+  svg.selectAll('rect.h').data(bins).join('rect').attr('x', (b) => x(b.x0) + 1).attr('width', (b) => Math.max(0, x(b.x1) - x(b.x0) - 2)).attr('y', (b) => y(b.length)).attr('height', (b) => y(0) - y(b.length)).attr('rx', 3).attr('fill', css('--s1'))
+    .on('mousemove', (ev, b) => tp.show(ev, [`${b.x0} € à ${b.x1} €`, `${b.length} livraisons`])).on('mouseleave', tp.hide);
+  const med = d3.median(vals);
+  svg.append('line').attr('x1', x(med)).attr('x2', x(med)).attr('y1', m.t).attr('y2', H - m.b).attr('stroke', css('--muted')).attr('stroke-dasharray', '4 3');
+  svg.append('text').attr('class', 'val').attr('x', x(med) + 5).attr('y', m.t + 4).text('médiane ' + eur.format(med));
+}
+
+let sk = 'id_livraison', sd = 1;
+function drawTable() {
+  const q = document.getElementById('q').value.trim().toLowerCase();
+  const num = document.querySelector(`th button[data-k="${sk}"]`).dataset.n;
+  let rows = DATA.livraisons.filter((r) => !q || Object.values(r).join(' ').toLowerCase().includes(q));
+  rows.sort((a, b) => (num ? a[sk] - b[sk] : String(a[sk]).localeCompare(String(b[sk]))) * sd);
+  document.querySelector('#tbl tbody').innerHTML = rows.map((r) => `<tr><td>${r.id_livraison}</td><td>${r.journee}</td><td>${r.jour_semaine}</td><td>${r.creneau}</td><td>${r.debut.slice(11, 16)}</td><td class="num">${n2.format(r.duree_min)}</td><td class="num">${n2.format(r.prix)}</td><td class="num">${r.pourboire ? n2.format(r.pourboire) : ''}</td><td>${r.groupee ? '<span class="pill">Oui</span>' : ''}</td></tr>`).join('');
+  document.getElementById('count').textContent = `${rows.length} livraison${rows.length > 1 ? 's' : ''}`;
+}
+document.querySelectorAll('th button').forEach((b) => b.addEventListener('click', () => { if (sk === b.dataset.k) sd = -sd; else { sk = b.dataset.k; sd = b.dataset.n ? -1 : 1; } drawTable(); }));
+document.getElementById('q').addEventListener('input', drawTable);
+
+function drawAll() { drawSem(); drawJours(); drawCren(); drawHeat(); drawScatter(); drawHist(); }
+drawAll(); drawTable();
+let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(drawAll, 150); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', drawAll);
+</script>
+</body>
+</html>

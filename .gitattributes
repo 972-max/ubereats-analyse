@@ -1,2 +1,3 @@
-dashboard/*.html linguist-documentation
+index.html linguist-documentation
+site/*.html linguist-documentation
 *.csv linguist-generated

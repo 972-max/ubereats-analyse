@@ -3,6 +3,8 @@
 Projet personnel de data analyse réalisé sur mes propres données de livraison (micro-entreprise, Île-de-France).
 **Question métier : quand dois-je rouler pour gagner le plus par heure travaillée ?**
 
+**📊 [Voir le dashboard interactif en ligne](https://972-max.github.io/ubereats-analyse/)**
+
 ![Revenus par semaine](outputs/figures/01_revenus_par_semaine.png)
 
 ## Contexte
@@ -96,10 +98,12 @@ ubereats-analyse/
 │   ├── raw/transactions_uber_brut.csv   # transactions retranscrites des relevés
 │   └── processed/                       # livraisons, journées, bonus, créneaux, KPIs
 ├── src/pipeline.py                      # nettoyage, enrichissement, KPIs, graphiques
+├── src/build_site.py                    # génère index.html à partir des données
 ├── outputs/
 │   ├── figures/                         # graphiques PNG
 │   └── uber_eats_donnees_powerbi.xlsx   # modèle de données pour Power BI
-├── dashboard/index.html                 # code du dashboard interactif (d3.js)
+├── index.html                           # dashboard interactif publié avec GitHub Pages
+├── site/template.html                   # modèle de la page (d3.js)
 └── docs/guide_powerbi.md                # construire le rapport Power BI pas à pas
 ```
 
@@ -107,7 +111,8 @@ ubereats-analyse/
 
 ```bash
 pip install -r requirements.txt
-python src/pipeline.py
+python src/pipeline.py      # nettoie les données, calcule les indicateurs, génère les graphiques
+python src/build_site.py    # régénère le dashboard en ligne
 ```
 
 ## Outils
