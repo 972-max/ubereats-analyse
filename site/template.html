@@ -11,7 +11,7 @@
   /* Mise en page : en-tête + chiffres clés, puis sections de cartes en grille fluide */
   :root {
     --bg: #f7f7f4; --panel: #ffffff; --ink: #121210; --muted: #5c5b55; --line: #e4e3dc;
-    --grid: #ecebe5; --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --muted-bar: #c9c8c0;
+    --grid: #ecebe5; --s1: #2a78d6; --s2: #eb6834; --s3: #1baf7a; --s4: #e0a400; --muted-bar: #c9c8c0;
     --tip: #ffffff;
     --display: "Fraunces", Georgia, serif;
     --body: "Inter Tight", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -19,7 +19,7 @@
   }
   @media (prefers-color-scheme: dark) {
     :root { --bg: #151514; --panel: #1d1d1b; --ink: #f3f2ec; --muted: #b5b4ab; --line: #34342f;
-      --grid: #2a2a27; --s1: #3987e5; --s2: #d95926; --s3: #199e70; --muted-bar: #4a4a45; --tip: #262624;
+      --grid: #2a2a27; --s1: #3987e5; --s2: #d95926; --s3: #199e70; --s4: #d19a00; --muted-bar: #4a4a45; --tip: #262624;
       color-scheme: dark; }
   }
   * { box-sizing: border-box; }
@@ -83,7 +83,7 @@
   <section>
     <h2>Évolution</h2>
     <div class="grid">
-      <div class="card"><h3>Revenus par semaine</h3><p class="note">Semaine du 05/10 arrêtée au vendredi 9 octobre.</p><div class="legend" id="leg-sem"></div><div class="chart" id="ch-sem"></div></div>
+      <div class="card"><h3>Revenus par semaine</h3><p class="note" id="sem-note"></p><div class="legend" id="leg-sem"></div><div class="chart" id="ch-sem"></div></div>
       <div class="card"><h3>Revenu par journée travaillée</h3><p class="note">Une course commencée après minuit compte pour la veille.</p><div class="chart" id="ch-jours"></div></div>
     </div>
   </section>
@@ -122,7 +122,7 @@
     </div>
   </section>
 
-  <footer>Limites : les relevés Uber ne donnent ni la distance ni la zone, et le temps d'attente entre deux courses n'est pas connu. Revenus bruts, avant cotisations URSSAF. Données réelles de mes relevés, période du <span id="periode"></span>.</footer>
+  <footer>Limites : les relevés Uber ne donnent ni la distance ni la zone, et le temps d'attente entre deux courses n'est pas connu. Revenus bruts, avant cotisations URSSAF ; ils incluent le complément de revenu minimum garanti versé par Uber. Données réelles de mes relevés, période du <span id="periode"></span>.</footer>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
@@ -134,12 +134,18 @@ const n2 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
 const K = DATA.kpis;
 
 // En-tête et chiffres clés
-const last = DATA.semaines[DATA.semaines.length - 1], prev = DATA.semaines[DATA.semaines.length - 2];
-const prixSem = DATA.semaines.map((s) => s.courses / s.nb);
+const last = DATA.semaines[DATA.semaines.length - 1];
+const bestSem = DATA.semaines.reduce((a, b) => (b.total > a.total ? b : a));
+const actives = DATA.semaines.filter((s) => s.nb > 0);
+const prixSem = actives.map((s) => s.courses / s.nb);
+const sansCourse = DATA.semaines.filter((s) => s.nb === 0).map((s) => s.semaine.slice(8));
 document.getElementById('lead').innerHTML =
-  `Du ${K.periode.replace(' au ', ' au ')}, j'ai gagné <b>${eur.format(K.revenu_total)}</b> en <b>${K.nb_livraisons} livraisons</b>. ` +
-  `La dernière semaine rapporte <b>${eur.format(last.total)}</b> (+${Math.round((last.total / prev.total - 1) * 100)} %), grâce au volume : ` +
-  `le prix moyen d'une course baisse de ${eur.format(prixSem[0])} à ${eur.format(prixSem[prixSem.length - 1])}.`;
+  `Du ${K.periode}, j'ai gagné <b>${eur.format(K.revenu_total)}</b> en <b>${K.nb_livraisons} livraisons</b>. ` +
+  `Ma meilleure semaine est celle du ${bestSem.semaine.slice(8)} (<b>${eur.format(bestSem.total)}</b>, ${bestSem.nb} livraisons). ` +
+  `Le prix moyen d'une course est passé de ${eur.format(prixSem[0])} la première semaine à ${eur.format(prixSem[prixSem.length - 1])} la dernière.`;
+document.getElementById('sem-note').textContent =
+  `Semaine du ${last.semaine.slice(8)} en cours.` + (sansCourse.length ? ` Aucune livraison la semaine du ${sansCourse.join(', ')}.` : '') +
+  ` Le revenu garanti est compté dans la semaine qu'il complète.`;
 document.getElementById('periode').textContent = K.periode;
 const tiles = [
   ['Revenu total', eur.format(K.revenu_total)], ['Livraisons', K.nb_livraisons],
@@ -152,7 +158,7 @@ document.getElementById('corr-note').textContent = `Plus une course est longue, 
 const best = DATA.creneaux.reduce((a, b) => (b.revenu_heure > a.revenu_heure ? b : a));
 const vol = DATA.creneaux.reduce((a, b) => (b.nb > a.nb ? b : a));
 document.getElementById('findings').innerHTML = [
-  `Le revenu progresse grâce au <b>nombre de courses</b>, pas à leur prix : il faut maximiser les heures sur les créneaux chargés.`,
+  `Le revenu dépend du <b>nombre de courses</b>, pas de leur prix, qui tend à baisser : il faut maximiser les heures sur les créneaux chargés.`,
   `Le <b>${vol.creneau.split(' (')[0].toLowerCase()}</b> fait le volume (${vol.nb} livraisons), l'<b>${best.creneau.split(' (')[0].toLowerCase()}</b> paie le mieux à l'heure (${eur.format(best.revenu_heure)}/h), sur peu de courses : à confirmer.`,
   `Le prix dépend surtout de la <b>durée</b> de la course (r = ${n2.format(K.correlation_duree_prix)}).`,
   `Les pourboires restent rares : ${n2.format(K.taux_pourboire_pct)} % des livraisons.`,
@@ -180,19 +186,20 @@ const legend = (id, items) => { document.getElementById(id).innerHTML = items.ma
 
 function drawSem() {
   const [box, W, svg] = svgIn('ch-sem', 240), H = 240, m = { t: 22, r: 8, b: 26, l: 44 };
-  const keys = [['courses', 'Courses', css('--s1')], ['pourboires', 'Pourboires', css('--s2')], ['bonus', 'Bonus', css('--s3')]];
+  const keys = [['courses', 'Courses', css('--s1')], ['pourboires', 'Pourboires', css('--s2')], ['bonus', 'Bonus', css('--s3')], ['garanti', 'Revenu garanti', css('--s4')]];
   legend('leg-sem', keys.map((k) => [k[1], k[2]]));
   const x = d3.scaleBand(DATA.semaines.map((d) => d.semaine), [m.l, W - m.r]).padding(0.35);
   const y = d3.scaleLinear([0, d3.max(DATA.semaines, (d) => d.total) * 1.15], [H - m.b, m.t]).nice();
   svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat((v) => v + ' €')).call(axis).call((g) => g.select('.domain').remove());
-  svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).tickSize(0).tickPadding(8)).call(axis);
+  svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).tickSize(0).tickPadding(8).tickFormat((w) => w.slice(8))).call(axis);
   const tp = tip(box);
+  const fmtTop = x.bandwidth() < 56 ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }) : eur;
   DATA.semaines.forEach((d) => {
     let acc = 0;
     keys.forEach(([k, , c]) => { if (!d[k]) return; svg.append('rect').attr('x', x(d.semaine)).attr('width', x.bandwidth()).attr('y', y(acc + d[k])).attr('height', Math.max(0, y(acc) - y(acc + d[k]) - (acc ? 2 : 0))).attr('fill', c); acc += d[k]; });
-    svg.append('text').attr('class', 'val').attr('x', x(d.semaine) + x.bandwidth() / 2).attr('y', y(d.total) - 6).attr('text-anchor', 'middle').text(eur.format(d.total));
+    svg.append('text').attr('class', 'val').attr('x', x(d.semaine) + x.bandwidth() / 2).attr('y', y(d.total) - 6).attr('text-anchor', 'middle').text(fmtTop.format(d.total));
     svg.append('rect').attr('x', x(d.semaine)).attr('width', x.bandwidth()).attr('y', m.t).attr('height', H - m.b - m.t).attr('fill', 'transparent')
-      .on('mousemove', (ev) => tp.show(ev, [d.semaine, `Courses : ${eur.format(d.courses)}`, `Pourboires : ${eur.format(d.pourboires)}`, `Bonus : ${eur.format(d.bonus)}`, `${d.nb} livraisons`])).on('mouseleave', tp.hide);
+      .on('mousemove', (ev) => tp.show(ev, [d.semaine, `Courses : ${eur.format(d.courses)}`, `Pourboires : ${eur.format(d.pourboires)}`, `Bonus : ${eur.format(d.bonus)}`, `Revenu garanti : ${eur.format(d.garanti)}`, `Total : ${eur.format(d.total)}`, `${d.nb} livraisons`])).on('mouseleave', tp.hide);
   });
 }
 

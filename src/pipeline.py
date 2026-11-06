@@ -22,7 +22,10 @@ PROC.mkdir(parents=True, exist_ok=True)
 FIG.mkdir(parents=True, exist_ok=True)
 
 # Totaux "Vos revenus" affichés sur chaque relevé Uber : sert de contrôle qualité
-TOTAUX_RELEVES = {"2026-09-21": 112.39, "2026-09-28": 125.92, "2026-10-05": 208.84}
+TOTAUX_RELEVES = {"2026-09-21": 112.39, "2026-09-28": 125.92, "2026-10-05": 208.84,
+                  "2026-10-12": 185.15, "2026-10-19": 10.75, "2026-10-26": 12.51, "2026-11-02": 114.10}
+# Événements qui ne sont pas des revenus (exclus du contrôle "Vos revenus")
+HORS_REVENUS = ["Transfert bancaire", "Cotisation URSSAF"]
 
 JOURS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
 CRENEAUX = ["Déjeuner (11h-14h)", "Après-midi (14h-18h)", "Dîner (18h-22h)", "Soirée (22h-2h)"]
@@ -46,7 +49,7 @@ df["detail"] = df["detail"].fillna("")
 
 # ---------------------------------------------------------------- 2. Contrôle qualité
 assert df.duplicated().sum() == 0, "Lignes en double"
-revenus = df[df["evenement"] != "Transfert bancaire"]
+revenus = df[~df["evenement"].isin(HORS_REVENUS)]
 controle = revenus.groupby("releve")["montant"].sum().round(2)
 for rel, attendu in TOTAUX_RELEVES.items():
     assert abs(controle[rel] - attendu) < 0.005, f"Écart sur le relevé {rel}: {controle[rel]} vs {attendu}"
@@ -90,6 +93,13 @@ bonus["journee"] = (bonus["date_evenement"] - pd.Timedelta(hours=4)).dt.normaliz
 bonus["niveau"] = bonus["detail"].str.extract(r"niveau (\d)").astype(int)
 bonus["creneau_bonus"] = bonus["detail"].str.extract(r"Créneau ([^ ]+)")
 
+# Complément de revenu minimum garanti : rattaché à la semaine qu'il complète (indiquée dans le détail)
+MOIS = {"sept.": 9, "oct.": 10, "nov.": 11, "déc.": 12}
+garanti = df[(df["evenement"] == "Complément revenu minimum") & (df["montant"] > 0)].copy()
+_sem = garanti["detail"].str.extract(r"Semaine du (\d+) (\S+)")
+garanti["semaine"] = [f"Sem. du {int(j):02d}/{MOIS[m]:02d}" for j, m in zip(_sem[0], _sem[1])]
+cotisations = -df.loc[df["evenement"] == "Cotisation URSSAF", "montant"].sum()
+
 # ---------------------------------------------------------------- 5. Journées et temps actif
 def temps_actif_min(g: pd.DataFrame) -> float:
     """Union des intervalles [début, fin] : on ne compte pas deux fois les commandes groupées."""
@@ -121,7 +131,7 @@ jours["revenu_par_heure_active"] = jours["revenu_total"] / (jours["temps_actif_m
 jours["jour_semaine"] = jours["journee"].dt.dayofweek.map(dict(enumerate(JOURS)))
 
 # ---------------------------------------------------------------- 6. Indicateurs
-total = liv["prix"].sum() + liv["pourboire"].sum() + bonus["montant"].sum()
+total = liv["prix"].sum() + liv["pourboire"].sum() + bonus["montant"].sum() + garanti["montant"].sum()
 heures_actives = jours["temps_actif_min"].sum() / 60
 
 par_creneau = liv.groupby("creneau").agg(
@@ -144,9 +154,14 @@ par_tranche = pd.cut(liv["prix"], bins=[0, 4.5, 6.5, 9, 15],
 semaines = liv.groupby("semaine").agg(nb=("id_livraison", "count"), courses=("prix", "sum"),
                                        pourboires=("pourboire", "sum"))
 semaines["bonus"] = bonus.groupby(bonus["releve"].map(lambda r: "Sem. du " + pd.to_datetime(r).strftime("%d/%m")))["montant"].sum()
-semaines = semaines.fillna(0)
-semaines = semaines.loc[sorted(semaines.index, key=lambda w: pd.to_datetime(w[-5:] + "/2026", format="%d/%m/%Y"))]
-semaines["total"] = semaines[["courses", "pourboires", "bonus"]].sum(axis=1)
+semaines["garanti"] = garanti.groupby("semaine")["montant"].sum()
+# Toutes les semaines de la période, y compris celles sans livraison
+_debut = pd.to_datetime(df["releve"]).min()
+_toutes = [f"Sem. du {d:%d/%m}" for d in pd.date_range(_debut, pd.to_datetime(df["releve"]).max(), freq="7D")]
+semaines = semaines.reindex(_toutes).fillna(0)
+semaines["nb"] = semaines["nb"].astype(int)
+semaines.index.name = "semaine"
+semaines["total"] = semaines[["courses", "pourboires", "bonus", "garanti"]].sum(axis=1)
 
 heat = (liv.pivot_table(index="jour_semaine", columns="creneau", values="prix", aggfunc="count")
            .reindex(index=[j for j in JOURS if j in set(liv["jour_semaine"])], columns=CRENEAUX)
@@ -158,6 +173,8 @@ kpis = {
     "revenu_courses": round(liv["prix"].sum(), 2),
     "pourboires": round(liv["pourboire"].sum(), 2),
     "bonus": round(bonus["montant"].sum(), 2),
+    "revenu_garanti": round(garanti["montant"].sum(), 2),
+    "cotisations_urssaf": round(cotisations, 2),
     "nb_livraisons": int(len(liv)),
     "nb_journees": int(len(jours)),
     "prix_moyen": round(liv["prix"].mean(), 2),
@@ -196,6 +213,8 @@ with open(PROC / "kpis.json", "w", encoding="utf-8") as f:
 with pd.ExcelWriter(ROOT / "outputs" / "uber_eats_donnees_powerbi.xlsx") as xw:
     liv_out.to_excel(xw, sheet_name="Livraisons", index=False)
     bonus[["journee", "date_evenement", "creneau_bonus", "niveau", "montant"]].to_excel(xw, sheet_name="Bonus", index=False)
+    garanti[["semaine", "date_evenement", "detail", "montant"]].to_excel(xw, sheet_name="Revenu_garanti", index=False)
+    semaines.round(2).reset_index().to_excel(xw, sheet_name="Semaines", index=False)
     jours.to_excel(xw, sheet_name="Journees", index=False)
     df.to_excel(xw, sheet_name="Transactions_brutes", index=False)
 
@@ -218,7 +237,7 @@ with open(PROC / "dashboard_data.json", "w", encoding="utf-8") as f:
     json.dump(dash, f, ensure_ascii=False, default=str)
 
 # ---------------------------------------------------------------- 8. Graphiques
-BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
+BLUE, ORANGE, AQUA, YELLOW = "#2a78d6", "#eb6834", "#1baf7a", "#e0a400"
 INK, MUTED, GRID = "#0b0b0b", "#52514e", "#e6e5e0"
 plt.rcParams.update({"font.family": "DejaVu Sans", "font.size": 10, "axes.edgecolor": GRID,
                      "axes.labelcolor": MUTED, "xtick.color": MUTED, "ytick.color": MUTED,
@@ -244,13 +263,16 @@ b2 = ax.bar(x, semaines["pourboires"], bottom=semaines["courses"], color=ORANGE,
             label="Pourboires", edgecolor="white", linewidth=1.5)
 b3 = ax.bar(x, semaines["bonus"], bottom=semaines["courses"] + semaines["pourboires"], color=AQUA,
             width=0.55, label="Bonus", edgecolor="white", linewidth=1.5)
+ax.bar(x, semaines["garanti"], bottom=semaines["courses"] + semaines["pourboires"] + semaines["bonus"], color=YELLOW,
+       width=0.55, label="Revenu garanti", edgecolor="white", linewidth=1.5)
 for i, t in enumerate(semaines["total"]):
-    ax.text(i, t + 3, f"{t:.2f} €".replace(".", ","), ha="center", color=INK, fontweight="bold")
-ax.set_xticks(list(x), semaines.index)
+    ax.text(i, t + 3, f"{t:.0f} €", ha="center", color=INK, fontweight="bold", fontsize=9)
+ax.set_xticks(list(x), [w[-5:] for w in semaines.index])
+ax.set_xlabel("Semaine du")
 ax.set_ylabel("€")
-ax.legend(frameon=False, ncols=3, loc="upper left")
-ax.set_ylim(0, semaines["total"].max() * 1.2)
-finish(ax, "Revenus par semaine", "01_revenus_par_semaine.png", "Semaine du 5/10 : relevé arrêté au 9/10 à 20h")
+ax.legend(frameon=False, ncols=4, loc="upper right", fontsize=8)
+ax.set_ylim(0, semaines["total"].max() * 1.3)
+finish(ax, "Revenus par semaine", "01_revenus_par_semaine.png", f"Dernière course enregistrée le {df['date_effectue'].max():%d/%m à %Hh%M}")
 
 # 2. Revenu par heure active selon le créneau
 fig, ax = plt.subplots(figsize=(7, 4))
@@ -302,13 +324,13 @@ ax.grid(axis="x", color=GRID)
 finish(ax, f"Durée et prix des courses (corrélation r = {corr:.2f})".replace(".", ","), "05_duree_vs_prix.png")
 
 # 6. Revenu par journée
-fig, ax = plt.subplots(figsize=(8, 4))
-lbl = jours["journee"].dt.strftime("%a %d/%m").str.replace("Mon", "lun").str.replace("Tue", "mar") \
+fig, ax = plt.subplots(figsize=(10, 4.2))
+lbl = jours["journee"].dt.strftime("%a\n%d/%m").str.replace("Mon", "lun").str.replace("Tue", "mar") \
     .str.replace("Wed", "mer").str.replace("Thu", "jeu").str.replace("Fri", "ven")
 ax.bar(range(len(jours)), jours["revenu_total"], color=BLUE, width=0.6)
 for i, v in enumerate(jours["revenu_total"]):
-    ax.text(i, v + 1, f"{v:.0f} €", ha="center", color=INK, fontsize=9)
-ax.set_xticks(range(len(jours)), lbl, rotation=0, fontsize=8)
+    ax.text(i, v + 1, f"{v:.0f} €", ha="center", color=INK, fontsize=8)
+ax.set_xticks(range(len(jours)), lbl, rotation=0, fontsize=7.5)
 ax.set_ylabel("€")
 finish(ax, "Revenu total par journée travaillée", "06_revenu_par_journee.png")
 
