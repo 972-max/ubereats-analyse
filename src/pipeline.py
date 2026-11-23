@@ -23,7 +23,8 @@ FIG.mkdir(parents=True, exist_ok=True)
 
 # Totaux "Vos revenus" affichés sur chaque relevé Uber : sert de contrôle qualité
 TOTAUX_RELEVES = {"2026-09-21": 112.39, "2026-09-28": 125.92, "2026-10-05": 208.84,
-                  "2026-10-12": 185.15, "2026-10-19": 10.75, "2026-10-26": 12.51, "2026-11-02": 114.10}
+                  "2026-10-12": 185.15, "2026-10-19": 10.75, "2026-10-26": 12.51, "2026-11-02": 114.10,
+                  "2026-11-09": 95.58, "2026-11-16": 266.17}
 # Événements qui ne sont pas des revenus (exclus du contrôle "Vos revenus")
 HORS_REVENUS = ["Transfert bancaire", "Cotisation URSSAF"]
 

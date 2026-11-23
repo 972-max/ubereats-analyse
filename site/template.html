@@ -144,7 +144,7 @@ document.getElementById('lead').innerHTML =
   `Ma meilleure semaine est celle du ${bestSem.semaine.slice(8)} (<b>${eur.format(bestSem.total)}</b>, ${bestSem.nb} livraisons). ` +
   `Le prix moyen d'une course est passé de ${eur.format(prixSem[0])} la première semaine à ${eur.format(prixSem[prixSem.length - 1])} la dernière.`;
 document.getElementById('sem-note').textContent =
-  `Semaine du ${last.semaine.slice(8)} en cours.` + (sansCourse.length ? ` Aucune livraison la semaine du ${sansCourse.join(', ')}.` : '') +
+  `Dernière semaine : celle du ${last.semaine.slice(8)}.` + (sansCourse.length ? ` Aucune livraison la semaine du ${sansCourse.join(', ')}.` : '') +
   ` Le revenu garanti est compté dans la semaine qu'il complète.`;
 document.getElementById('periode').textContent = K.periode;
 const tiles = [
@@ -191,7 +191,7 @@ function drawSem() {
   const x = d3.scaleBand(DATA.semaines.map((d) => d.semaine), [m.l, W - m.r]).padding(0.35);
   const y = d3.scaleLinear([0, d3.max(DATA.semaines, (d) => d.total) * 1.15], [H - m.b, m.t]).nice();
   svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r)).tickFormat((v) => v + ' €')).call(axis).call((g) => g.select('.domain').remove());
-  svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).tickSize(0).tickPadding(8).tickFormat((w) => w.slice(8))).call(axis);
+  svg.append('g').attr('transform', `translate(0,${H - m.b})`).call(d3.axisBottom(x).tickSize(0).tickPadding(8).tickValues(x.domain().filter((_, i, all) => (all.length - 1 - i) % Math.ceil(40 / x.step()) === 0)).tickFormat((w) => w.slice(8))).call(axis);
   const tp = tip(box);
   const fmtTop = x.bandwidth() < 56 ? new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }) : eur;
   DATA.semaines.forEach((d) => {
